@@ -5,6 +5,12 @@ import PreloadingAnimated from "../mixins/states/preloadingAnimated";
 class Boot extends PreloadingAnimated(Phaser.State) {
     public game: Game;
 
+    public create() {
+        super.create();
+
+        this.startPreLoading();
+    }
+
     protected startPreLoading() {
         super.startPreLoading();
 

@@ -49,6 +49,8 @@ export default (superclass: typeof Phaser.State) => class PreloadingAnimated ext
   }
 
   public create() {
+    super.create();
+
     this.p0 = new Phaser.Point(this.world.centerX, this.world.centerY);
     this.p1 = new Phaser.Point(this.p0.x + this.circleParams.distance, this.p0.y);
     this.p2 = new Phaser.Point(this.p0.x + this.circleParams.distance, this.p0.y);
@@ -72,11 +74,11 @@ export default (superclass: typeof Phaser.State) => class PreloadingAnimated ext
     this.graphics3.beginFill(this.circleParams.color3);
     this.graphics3.drawCircle(0, 0, this.circleParams.diameter);
     this.graphics3.endFill();
-
-    this.startPreLoading();
   }
 
   public update() {
+    super.update();
+
     if (this.isPreloaded) {
         this.graphics1.clear();
         this.graphics1.beginFill(this.circleParams.color1, this.circleParams.opacity);
