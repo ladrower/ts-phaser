@@ -1,7 +1,9 @@
 import {basic as cfg} from "../config";
 import Game from "../game";
 import PreloadingAnimated from "../mixins/states/preloadingAnimated";
-
+/**
+ * Playing with mixins to mix in some animation
+ */
 class Boot extends PreloadingAnimated(Phaser.State) {
     public game: Game;
 
