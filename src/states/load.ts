@@ -22,7 +22,7 @@ export default class Load extends Phaser.State {
     public preload() {
         this.loadBar.onPreloadStart();
 
-        this.load.image("space", "./assets/images/space.jpg");
+        this.load.atlas("letters", "./assets/sprites/letters.png", "./assets/sprites/letters.json");
     }
 
     public create() {
