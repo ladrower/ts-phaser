@@ -9,6 +9,8 @@ export default class Reel {
     protected items: Phaser.Sprite[] = [];
     protected window: Phaser.Graphics;
     protected blurFilter: IBlurFilter;
+    protected baseX: number;
+    protected baseY: number;
     protected offset: number;
     protected y: number;
     protected isStarting: boolean = false;
@@ -24,20 +26,23 @@ export default class Reel {
         protected game: Phaser.Game,
         protected spriteName: string,
         protected framesNumber: number,
-        protected blurFilterId: string
+        protected blurFilterId: string,
+        protected maxBlurValue = 15
     ) {}
 
-    public create(x: number, y: number, window: Phaser.Graphics, offset: number, itemsNumber = 3) {
-        this.y = y;
+    public create(baseX: number, baseY: number, window: Phaser.Graphics, offset: number, itemsNumber = 3) {
+        this.baseX = baseX;
+        this.baseY = baseY;
+        this.y = baseY;
         this.window = window;
         this.offset = offset;
         this.blurFilter = <IBlurFilter> this.game.add.filter(this.blurFilterId);
         this.blurFilter.blur = 0;
         this.blurFilter.padding = 10;
 
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < itemsNumber; i++) {
             let dy = offset * i;
-            let item = new ReelItem(this.game, x, y + dy, this.spriteName);
+            let item = new ReelItem(this.game, baseX, baseY - dy, this.spriteName);
             item.offset = dy;
             item.mask = window;
             item.filters = [this.blurFilter];
@@ -67,7 +72,7 @@ export default class Reel {
                      Phaser.Timer.SECOND * accelerationSeconds,
                      accelarationPower.In, true)
             .onUpdateCallback((tween, percent) => {
-                this.update(percent * 15);
+                this.update(percent * this.maxBlurValue);
             })
             .onComplete.addOnce(() => {
                 this.rate = pixelsPerSecond;
@@ -79,6 +84,32 @@ export default class Reel {
 
     public stop(finalFrameNumber: number) {
         if (this.isStarted) {
+
+            this.update();
+
+            let topItem = <ReelItem> this.items[0];
+
+            this.items.forEach((item: ReelItem) => {
+                if (item.offset > topItem.offset) {
+                    topItem = item;
+                }
+            });
+
+            topItem.frame = finalFrameNumber;
+
+            let dy = this.baseY - (this.y - topItem.offset);
+
+            this.game.add.tween(this)
+                .to( { y: this.y + dy },
+                     Phaser.Timer.SECOND * 1, // TODO: calculate duration to start from current rate
+                     Phaser.Easing.Elastic.Out, true)
+            .onUpdateCallback((tween, percent) => {
+                this.update((1 - percent) * this.maxBlurValue);
+            })
+            .onComplete.addOnce(() => {
+                // 
+            });
+
 
             this.isStarted = false;
             this.isStarting = false;
@@ -99,12 +130,12 @@ export default class Reel {
         let deadlineY = this.window.y + this.window.height;
         let count = this.items.length;
         this.items.forEach((item: ReelItem, i) => {
-            let itemY = this.y + item.offset;
+            let itemY = this.y - item.offset;
             if (itemY > deadlineY) {
                 let gap = itemY - deadlineY;
                 let ajustment = count * this.offset;
-                item.offset -= ajustment * Math.ceil(gap / ajustment);
-                itemY = this.y + item.offset;
+                item.offset += ajustment * Math.ceil(gap / ajustment);
+                itemY = this.y - item.offset;
                 item.frame = this.getRandomFrame();
             }
 

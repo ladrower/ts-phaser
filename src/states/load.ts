@@ -5,7 +5,7 @@ import StateLoadBar from "../components/state/loadBar";
  * Playing with composition to add some loading animation
  */
 export default class Load extends Phaser.State {
-    protected static loadBarDebounce: number = 10; // 500
+    protected static loadBarDebounce: number = 0; // 500
     protected loadBar: StateLoadBar;
 
     public game: Game;

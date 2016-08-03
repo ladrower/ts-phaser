@@ -39,9 +39,11 @@ export default class Play extends Phaser.State {
     //     mask.y = y - 100;
     // }, this);
 
-        this.reel.create(this.world.width - 300, 50, mask, 300);
+        this.reel.create(this.world.width - 300, this.world.height / 2 - 128, mask, 300);
 
-        this.reel.start(1200, 2);
+        this.reel.start(1200, 0.5);
+
+        setTimeout(() => this.reel.stop(1), 4000);
 
 
     }
