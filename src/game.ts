@@ -7,7 +7,7 @@ export default class Game extends Phaser.Game {
     public myLocale: any;
 
     constructor() {
-        super(0, 0, Phaser.CANVAS, config.basic.STAGE.CONTAINER, null);
+        super(0, 0, Phaser.AUTO, config.basic.STAGE.CONTAINER, null);
 
         Object.keys(states).forEach(state => this.state.add(state, states[state]));
 
