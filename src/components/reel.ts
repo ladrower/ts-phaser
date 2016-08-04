@@ -57,7 +57,6 @@ export default class Reel {
 
     public start(pixelsPerSecond = 1000, accelerationSeconds = 1, accelarationPower = 4) {
         if (!this.isRunning) {
-            console.log("starting");
             let Easing = (p => {
                 switch (p) {
                     case 2: return Phaser.Easing.Quadratic;
@@ -98,7 +97,6 @@ export default class Reel {
 
     public stop(finalFrameNumber: number) {
         if (this.isStarted && !this.isStopping) {
-            console.log("stopping");
             this.isStopping = true;
             this.isStarted = false;
             this.isStarting = false;
@@ -142,28 +140,35 @@ export default class Reel {
 
     public onUpdate() {
         if (this.isStarted) {
-            console.log("updating");
             this.y += this.velocity * (this.game.time.now - this.lastUpdateTime) / Phaser.Timer.SECOND;
             this.lastUpdateTime = this.game.time.now;
-            this.update();
+            this.update(void(0), true);
         }
     }
 
-    protected update(blur?: number) {
+    protected update(blur?: number, reset = false) {
         let deadlineY = this.window.y + this.window.height;
         let count = this.items.length;
         this.items.forEach((item: ReelItem, i) => {
-            let itemY = this.y - item.offset;
+            let itemOffset = item.offset;
+            let itemY = this.y - itemOffset;
             if (itemY > deadlineY) {
                 let gap = itemY - deadlineY;
                 let ajustment = count * this.offset;
-                item.offset += ajustment * Math.ceil(gap / ajustment);
-                itemY = this.y - item.offset;
+                itemOffset += ajustment * Math.ceil(gap / ajustment);
+                itemY = this.y - itemOffset;
                 item.frame = this.getRandomFrame();
             }
-
+            if (reset) {
+                itemOffset -= this.y;
+                itemY = -itemOffset;
+            }
             item.y = itemY;
+            item.offset = itemOffset;
         });
+        if (reset) {
+            this.y = 0;
+        }
         if (blur !== undefined && blur !== this.blurFilter.blur) {
             this.blurFilter.blur = blur;
         }

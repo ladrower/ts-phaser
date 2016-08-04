@@ -25,7 +25,7 @@ export default class Play extends Phaser.State {
         balanceText.inputEnabled = true;
         balanceText.events.onInputDown.add(() => {
             if (this.reel.isRunning) {
-                this.reel.stop(1);
+                this.reel.stop(0);
             } else {
                 this.reel.start(1200, 0.5);
             }

@@ -8,6 +8,7 @@ let basic = {
     BOOTSTRAP_STATE: "Boot",
     CONFIG_PATH: "config.json",
     GAME: {
+        ATLAS_SPRITE: "atlas",
         BET_RANGE: [1, 5],
         CARDS_FRAMES_MAP: {
             J: 0,
