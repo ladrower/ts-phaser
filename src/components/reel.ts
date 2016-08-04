@@ -11,15 +11,17 @@ export default class Reel {
     protected blurFilter: IBlurFilter;
     protected baseX: number;
     protected baseY: number;
+    protected stopYOffset: number;
     protected offset: number;
     protected y: number;
     protected isStarting: boolean = false;
     protected isStarted: boolean = false;
-    protected rate: number;
+    protected isStopping: boolean = false;
+    protected velocity: number = 0;
     protected lastUpdateTime: number;
 
     public get isRunning() {
-        return this.isStarting || this.isStarted;
+        return this.isStarting || this.isStarted || this.isStopping;
     }
 
     constructor(
@@ -30,10 +32,11 @@ export default class Reel {
         protected maxBlurValue = 15
     ) {}
 
-    public create(baseX: number, baseY: number, window: Phaser.Graphics, offset: number, itemsNumber = 3) {
+    public create(baseX: number, baseY: number, window: Phaser.Graphics, offset: number, stopYOffset = 0, itemsNumber = 3) {
         this.baseX = baseX;
         this.baseY = baseY;
-        this.y = baseY;
+        this.stopYOffset = stopYOffset;
+        this.y = baseY + stopYOffset;
         this.window = window;
         this.offset = offset;
         this.blurFilter = <IBlurFilter> this.game.add.filter(this.blurFilterId);
@@ -42,7 +45,7 @@ export default class Reel {
 
         for (let i = 0; i < itemsNumber; i++) {
             let dy = offset * i;
-            let item = new ReelItem(this.game, baseX, baseY - dy, this.spriteName);
+            let item = new ReelItem(this.game, this.baseX, this.y - dy, this.spriteName);
             item.offset = dy;
             item.mask = window;
             item.filters = [this.blurFilter];
@@ -52,67 +55,86 @@ export default class Reel {
         }
     }
 
-    public start(pixelsPerSecond, accelerationSeconds = 3, accelarationPower = Phaser.Easing.Quartic) {
-        let power = (p => {
-            switch (p) {
-                case Phaser.Easing.Quadratic: return 2;
-                case Phaser.Easing.Cubic: return 3;
-                case Phaser.Easing.Quartic: return 4;
-                case Phaser.Easing.Quintic: return 5;
-            }
-            throw "Unsopported easing power passed. Supported: [Quadratic, Cubic, Quartic, Quintic]";
-        })(accelarationPower);
-        let dS = pixelsPerSecond / Phaser.Timer.SECOND;
-        let duration = accelerationSeconds * Phaser.Timer.SECOND;
-        let c = dS / (1 - Math.pow((duration - 1) / duration, power));
-        if (!this.isStarting) {
+    public start(pixelsPerSecond = 1000, accelerationSeconds = 1, accelarationPower = 4) {
+        if (!this.isRunning) {
+            console.log("starting");
+            let Easing = (p => {
+                switch (p) {
+                    case 2: return Phaser.Easing.Quadratic;
+                    case 3: return Phaser.Easing.Cubic;
+                    case 4: return Phaser.Easing.Quartic;
+                    case 5: return Phaser.Easing.Quintic;
+                }
+                throw "Unsopported accelaration power passed. Supported: [2, 3, 4, 5]";
+            })(accelarationPower);
+            let dS = pixelsPerSecond / Phaser.Timer.SECOND;
+            let duration = accelerationSeconds * Phaser.Timer.SECOND;
+            let c = dS / (1 - Math.pow((duration - 1) / duration, accelarationPower));
+            let lastY = this.y;
+
+            this.lastUpdateTime = this.game.time.now;
             this.isStarting = true;
             this.game.add.tween(this)
                 .to( { y: this.y + c },
                      Phaser.Timer.SECOND * accelerationSeconds,
-                     accelarationPower.In, true)
+                     Easing.In, true)
             .onUpdateCallback((tween, percent) => {
+                let diffY = this.y - lastY;
+                lastY = this.y;
                 this.update(percent * this.maxBlurValue);
+                this.velocity = diffY / (this.game.time.now - this.lastUpdateTime) * Phaser.Timer.SECOND;
+                this.lastUpdateTime = this.game.time.now;
             })
             .onComplete.addOnce(() => {
-                this.rate = pixelsPerSecond;
-                this.isStarted = true;
-                this.lastUpdateTime = this.game.time.now;
+                if (this.isStarting) {
+                    this.isStarting = false;
+                    this.isStarted = true;
+                    this.velocity = pixelsPerSecond;
+                    this.lastUpdateTime = this.game.time.now;
+                }
             });
         }
     }
 
     public stop(finalFrameNumber: number) {
-        if (this.isStarted) {
+        if (this.isStarted && !this.isStopping) {
+            console.log("stopping");
+            this.isStopping = true;
+            this.isStarted = false;
+            this.isStarting = false;
 
             this.update();
 
-            let topItem = <ReelItem> this.items[0];
-
+            let stopItem = <ReelItem> this.items[0];
             this.items.forEach((item: ReelItem) => {
-                if (item.offset > topItem.offset) {
-                    topItem = item;
+                if (item.offset > stopItem.offset) {
+                    stopItem = item;
                 }
             });
+            stopItem.frame = finalFrameNumber;
 
-            topItem.frame = finalFrameNumber;
-
-            let dy = this.baseY - (this.y - topItem.offset);
+            let dy = this.baseY - (this.y - stopItem.offset) + this.stopYOffset;
+            let pullY = dy - stopItem.height;
 
             this.game.add.tween(this)
-                .to( { y: this.y + dy },
-                     Phaser.Timer.SECOND * 1, // TODO: calculate duration to start from current rate
-                     Phaser.Easing.Elastic.Out, true)
-            .onUpdateCallback((tween, percent) => {
-                this.update((1 - percent) * this.maxBlurValue);
-            })
+                .to( { y: this.y + pullY },
+                     pullY / this.velocity * Phaser.Timer.SECOND,
+                     Phaser.Easing.Linear.None, true)
+            .onUpdateCallback(() => this.update())
             .onComplete.addOnce(() => {
-                // 
+                this.game.add.tween(this)
+                    .to( { y: this.y + stopItem.height },
+                        stopItem.height / this.velocity * Phaser.Timer.SECOND * 10,
+                        Phaser.Easing.Elastic.Out, true)
+                .onUpdateCallback((tween, percent) => {
+                    this.update((1 - percent) * this.maxBlurValue);
+                })
+                .onComplete.addOnce(() => {
+                    this.isStopping = false;
+                });
             });
 
 
-            this.isStarted = false;
-            this.isStarting = false;
         } else if (this.isStarting) {
             // 
         }
@@ -120,7 +142,8 @@ export default class Reel {
 
     public onUpdate() {
         if (this.isStarted) {
-            this.y += this.rate * (this.game.time.now - this.lastUpdateTime) / Phaser.Timer.SECOND;
+            console.log("updating");
+            this.y += this.velocity * (this.game.time.now - this.lastUpdateTime) / Phaser.Timer.SECOND;
             this.lastUpdateTime = this.game.time.now;
             this.update();
         }

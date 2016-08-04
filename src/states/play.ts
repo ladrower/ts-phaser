@@ -19,6 +19,16 @@ export default class Play extends Phaser.State {
         let balanceText = this.game.add.text(this.world.centerX, this.world.centerY, "Balance", textStyle);
         balanceText.anchor.set(0.5);
 
+
+        balanceText.inputEnabled = true;
+        balanceText.events.onInputDown.add(() => {
+            if (this.reel.isRunning) {
+                this.reel.stop(1);
+            } else {
+                this.reel.start(1200, 0.5);
+            }
+        });
+
         // let betText = this.game.add.text(500, 1000, `Bet: ${this.stake.bet}` , textStyle);
 
         // this.stake.registerDrawable({
@@ -41,9 +51,7 @@ export default class Play extends Phaser.State {
 
         this.reel.create(this.world.width - 300, this.world.height / 2 - 128, mask, 300);
 
-        this.reel.start(1200, 0.5);
 
-        setTimeout(() => this.reel.stop(1), 4000);
 
 
     }
