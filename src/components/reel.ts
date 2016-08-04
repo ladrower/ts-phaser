@@ -1,5 +1,6 @@
-import IBlurFilter from "../interfaces/IBlurFilter";
 import "../filters/myBlurY";
+import IBlurFilter from "../interfaces/IBlurFilter";
+import {Promise} from "es6-promise";
 
 class ReelItem extends Phaser.Sprite {
     public offset: number;
@@ -17,6 +18,7 @@ export default class Reel {
     protected isStarting: boolean = false;
     protected isStarted: boolean = false;
     protected isStopping: boolean = false;
+    protected stopPromise: Promise<any> = null; // TODO
     protected velocity: number = 0;
     protected lastUpdateTime: number;
 

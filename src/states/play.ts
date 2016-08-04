@@ -7,6 +7,7 @@ import ReelComponent from "../components/reel";
 export default class Play extends Phaser.State {
     protected stake: Stake;
     protected reel: ReelComponent;
+    protected cardsGroup: Phaser.Group;
 
     public game: Game;
 
@@ -26,22 +27,17 @@ export default class Play extends Phaser.State {
         balanceText.events.onInputDown.add(() => {
             if (this.reel.isRunning) {
                 this.reel.stop(0);
+                this.cardsGroup.alpha = 1;
             } else {
                 this.reel.start(1200, 0.5);
+                this.cardsGroup.alpha = 0.5;
             }
         });
 
-        let cardsGroup = this.add.group();
-        for (let i = 0; i < config.GAME.CARDS_NUMBER; i++) {
-            let b = this.add.button(50, this.world.centerY, config.GAME.CARDS_SPRITE, this.onLetterClick, this);
-            b.frame = i;
-            b.anchor.set(0, 0.5);
-            b.x += (b.width + 50) * i;
-            cardsGroup.add(b);
-        }
 
+        this.createCards();
 
-        let betText = this.game.add.text(50 + cardsGroup.centerX, cardsGroup.bottom + 100, null , textStyle);
+        let betText = this.game.add.text(50 + this.cardsGroup.centerX, this.cardsGroup.bottom + 100, null , textStyle);
         betText.anchor.set(0.5, 0);
 
         this.stake.registerDrawer((model: Stake, changedProps) => {
@@ -59,6 +55,17 @@ export default class Play extends Phaser.State {
         this.stake.draw(["bet", "symbol"]);
 
         this.createReel();
+    }
+
+    protected createCards() {
+        this.cardsGroup = this.add.group();
+        for (let i = 0; i < config.GAME.CARDS_NUMBER; i++) {
+            let b = this.add.button(50, this.world.centerY, config.GAME.CARDS_SPRITE, this.onLetterClick, this);
+            b.frame = i;
+            b.anchor.set(0, 0.5);
+            b.x += (b.width + 50) * i;
+            this.cardsGroup.add(b);
+        }
     }
 
     protected createReel() {
