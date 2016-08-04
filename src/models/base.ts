@@ -1,5 +1,1 @@
-export default class Base {
-    // constructor() {
-
-    // }
-}
+export default class Base {}

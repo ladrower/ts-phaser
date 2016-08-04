@@ -1,47 +1,33 @@
 
 import Base from "./base";
+import Drawable from "../mixins/models/drawable";
 
+class Stake extends Drawable(Base) {
 
-
-interface IDrawable {
-    foo();
-}
-
-let Drawable = (superclass: typeof Base) => class extends superclass implements IDrawable {
-  public foo() {
-    console.log("foo from MyMixin");
-  }
-};
-
-let Drawable2 = (superclass: new () => IDrawable) => class Drawable2 extends superclass implements IDrawable  {
-  public foo() {
-    super.foo();
-    console.log("foo from MyMixin2");
-  }
-};
-
-class Some extends Base {
-
-}
-
-
-class Stake extends Drawable2(Drawable(Some)) {
-
-    constructor(public symbol, public bet) {
+    constructor(protected _symbol: string, protected _bet: number) {
         super();
-        // this.symbol = symbol;
-        // this.bet = bet;
     }
 
-    public foo() {
-        super.foo();
-        console.log("foo from Stake");
+    public isValid(): boolean {
+      return this._symbol !== null && this._bet !== null;
     }
 
+    get symbol() {
+      return this._symbol;
+    }
+    set symbol(value) {
+      this._symbol = value;
+      this.draw(["symbol"]);
+    }
+
+    get bet() {
+      return this._bet;
+    }
+    set bet(value) {
+      this._bet = value;
+      this.draw(["bet"]);
+    }
 
 }
-
-let s = new Stake(1, 2);
-s.foo();
 
 export default Stake;
