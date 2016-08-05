@@ -26,8 +26,9 @@ export default class Play extends Phaser.State {
         balanceText.inputEnabled = true;
         balanceText.events.onInputDown.add(() => {
             if (this.reel.isRunning) {
-                this.reel.stop(0);
-                this.cardsGroup.alpha = 1;
+                try {
+                    this.reel.stop(0).then(() => this.cardsGroup.alpha = 1);
+                } catch (e) { console.error(e); }
             } else {
                 this.reel.start(1200, 0.5);
                 this.cardsGroup.alpha = 0.5;
@@ -59,13 +60,25 @@ export default class Play extends Phaser.State {
 
     protected createCards() {
         this.cardsGroup = this.add.group();
+        this.cardsGroup.inputEnableChildren = true;
         for (let i = 0; i < config.GAME.CARDS_NUMBER; i++) {
-            let b = this.add.button(50, this.world.centerY, config.GAME.CARDS_SPRITE, this.onLetterClick, this);
+            let b = this.add.button(50, this.world.centerY, config.GAME.CARDS_SPRITE);
             b.frame = i;
             b.anchor.set(0, 0.5);
             b.x += (b.width + 50) * i;
             this.cardsGroup.add(b);
+            b.onInputUp.add((r) => console.log(r));
         }
+        this.cardsGroup.onChildInputOver.add((b) => {
+            b.tint = 0xff00ff;
+        });
+        this.cardsGroup.onChildInputOut.add((b) => {
+            b.tint = 0xffffff;
+        });
+        this.cardsGroup.onChildInputDown.add((b) => {
+            b.tint = 0x0000ff;
+        });
+        this.cardsGroup.onChildInputUp.add(this.onCardClick, this);
     }
 
     protected createReel() {
@@ -80,7 +93,9 @@ export default class Play extends Phaser.State {
         this.reel.onUpdate();
     }
 
-    public onLetterClick(letter) {
-        console.log(letter.frame);
+    protected onCardClick(card) {
+        console.log(card.frame);
+        // this.cardsGroup.forEach(b => b.inputEnabled = false, this);
+        this.cardsGroup.alpha = 0.5;
     }
 }

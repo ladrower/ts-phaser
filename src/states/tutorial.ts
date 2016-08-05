@@ -3,7 +3,7 @@ import Game from "../game";
 export default class Tutorial extends Phaser.State {
     public game: Game;
 
-    protected wavesFilter;
+    protected wavesFilter: Phaser.Filter;
 
     public create() {
         this.initControls();
@@ -12,6 +12,7 @@ export default class Tutorial extends Phaser.State {
         let background = this.add.sprite(0, 0);
         background.width = this.world.width;
         background.height = this.world.height;
+        background.filters = [this.wavesFilter];
 
         let textStyle = {alight: "center",  fill: "#fff", font: "100px Arial", stroke: "#000"};
 
@@ -30,8 +31,6 @@ export default class Tutorial extends Phaser.State {
             this.game.myLocale.gameInstructions,
             textStyle);
         instructions.anchor.set(0.5);
-
-        background.filters = [this.wavesFilter];
     }
 
     public update() {

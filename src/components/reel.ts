@@ -2,11 +2,18 @@ import "../filters/myBlurY";
 import IBlurFilter from "../interfaces/IBlurFilter";
 import {Promise} from "es6-promise";
 
+let ReelException = {
+    AlreadyStarted: class extends Error { public name = "AlreadyStartedException"; },
+    AlreadyStopped: class extends Error { public name = "AlreadyStoppedException"; },
+    UnsopportedAccelarationPower: class extends Error { public name = "UnsopportedAccelarationPowerException"; },
+};
+
 class ReelItem extends Phaser.Sprite {
     public offset: number;
 }
 
 export default class Reel {
+    public static Exception = ReelException;
     protected items: Phaser.Sprite[] = [];
     protected window: Phaser.Graphics;
     protected blurFilter: IBlurFilter;
@@ -18,7 +25,7 @@ export default class Reel {
     protected isStarting: boolean = false;
     protected isStarted: boolean = false;
     protected isStopping: boolean = false;
-    protected stopPromise: Promise<any> = null; // TODO
+    protected startPromise: Promise<any>;
     protected velocity: number = 0;
     protected lastUpdateTime: number;
 
@@ -66,7 +73,7 @@ export default class Reel {
                     case 4: return Phaser.Easing.Quartic;
                     case 5: return Phaser.Easing.Quintic;
                 }
-                throw "Unsopported accelaration power passed. Supported: [2, 3, 4, 5]";
+                throw new ReelException.UnsopportedAccelarationPower("Unsopported accelaration power passed. Supported: [2, 3, 4, 5]");
             })(accelarationPower);
             let dS = pixelsPerSecond / Phaser.Timer.SECOND;
             let duration = accelerationSeconds * Phaser.Timer.SECOND;
@@ -75,26 +82,34 @@ export default class Reel {
 
             this.lastUpdateTime = this.game.time.now;
             this.isStarting = true;
-            this.game.add.tween(this)
-                .to( { y: this.y + c },
-                     Phaser.Timer.SECOND * accelerationSeconds,
-                     Easing.In, true)
-            .onUpdateCallback((tween, percent) => {
-                let diffY = this.y - lastY;
-                lastY = this.y;
-                this.update(percent * this.maxBlurValue);
-                this.velocity = diffY / (this.game.time.now - this.lastUpdateTime) * Phaser.Timer.SECOND;
-                this.lastUpdateTime = this.game.time.now;
-            })
-            .onComplete.addOnce(() => {
-                if (this.isStarting) {
+
+            this.startPromise = new Promise((resolve) => {
+                this.game.add.tween(this)
+                    .to( { y: this.y + c },
+                        Phaser.Timer.SECOND * accelerationSeconds,
+                        Easing.In, true)
+                .onUpdateCallback((tween, percent) => {
+                    let diffY = this.y - lastY;
+                    lastY = this.y;
+                    this.update(percent * this.maxBlurValue);
+                    this.velocity = diffY / (this.game.time.now - this.lastUpdateTime) * Phaser.Timer.SECOND;
+                    this.lastUpdateTime = this.game.time.now;
+                })
+                .onComplete.addOnce(() => {
+                    this.startPromise = null;
                     this.isStarting = false;
                     this.isStarted = true;
                     this.velocity = pixelsPerSecond;
                     this.lastUpdateTime = this.game.time.now;
-                }
+
+                    resolve();
+                });
             });
+
+            return this.startPromise;
         }
+
+        throw new ReelException.AlreadyStarted("Start method was already called");
     }
 
     public stop(finalFrameNumber: number) {
@@ -116,28 +131,32 @@ export default class Reel {
             let dy = this.baseY - (this.y - stopItem.offset) + this.stopYOffset;
             let pullY = dy - stopItem.height;
 
-            this.game.add.tween(this)
-                .to( { y: this.y + pullY },
-                     pullY / this.velocity * Phaser.Timer.SECOND,
-                     Phaser.Easing.Linear.None, true)
-            .onUpdateCallback(() => this.update())
-            .onComplete.addOnce(() => {
+            return new Promise((resolve) => {
                 this.game.add.tween(this)
-                    .to( { y: this.y + stopItem.height },
-                        stopItem.height / this.velocity * Phaser.Timer.SECOND * 10,
-                        Phaser.Easing.Elastic.Out, true)
-                .onUpdateCallback((tween, percent) => {
-                    this.update((1 - percent) * this.maxBlurValue);
-                })
+                    .to( { y: this.y + pullY },
+                        pullY / this.velocity * Phaser.Timer.SECOND,
+                        Phaser.Easing.Linear.None, true)
+                .onUpdateCallback(() => this.update())
                 .onComplete.addOnce(() => {
-                    this.isStopping = false;
+                    this.game.add.tween(this)
+                        .to( { y: this.y + stopItem.height },
+                            stopItem.height / this.velocity * Phaser.Timer.SECOND * 10,
+                            Phaser.Easing.Elastic.Out, true)
+                    .onUpdateCallback((tween, percent) => {
+                        this.update((1 - percent) * this.maxBlurValue);
+                    })
+                    .onComplete.addOnce(() => {
+                        this.isStopping = false;
+
+                        resolve();
+                    });
                 });
             });
-
-
         } else if (this.isStarting) {
-            // 
+            return this.startPromise.then(() => this.stop(finalFrameNumber));
         }
+
+        throw new ReelException.AlreadyStopped("Stop method was already called");
     }
 
     public onUpdate() {
