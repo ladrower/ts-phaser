@@ -1,11 +1,12 @@
 
 import {basic as config} from "../config";
 import Game from "../game";
+import Slots from "../models/slots";
 import Stake from "../models/stake";
 import ReelComponent from "../components/reel";
 
 export default class Play extends Phaser.State {
-    protected stake: Stake;
+    protected slots: Slots;
     protected reel: ReelComponent;
     protected cardsGroup: Phaser.Group;
 
@@ -13,49 +14,52 @@ export default class Play extends Phaser.State {
 
     public init() {
         this.reel = new ReelComponent(this.game, config.GAME.CARDS_SPRITE, config.GAME.CARDS_NUMBER, "MyBlurY");
-        this.stake = new Stake(null, 1);
+        this.slots = new Slots(
+            new Stake(null, 1)
+        );
     }
 
     public create() {
+        this.createCards();
+        this.createReel();
+
         let textStyle = {alight: "center", fill: "#fff", font: "80px Arial", stroke: "#000"};
 
-        let balanceText = this.game.add.text(this.world.centerX, this.world.centerY, "Balance", textStyle);
-        balanceText.anchor.set(0.5);
+        let balanceText = this.game.add.text(this.cardsGroup.centerX, this.cardsGroup.top - 100, "Balance", textStyle);
+        balanceText.anchor.set(0.5, 1);
 
 
-        balanceText.inputEnabled = true;
-        balanceText.events.onInputDown.add(() => {
-            if (this.reel.isRunning) {
-                try {
-                    this.reel.stop(0).then(() => this.cardsGroup.alpha = 1);
-                } catch (e) { console.error(e); }
-            } else {
-                this.reel.start(1200, 0.5);
-                this.cardsGroup.alpha = 0.5;
-            }
-        });
-
-
-        this.createCards();
-
-        let betText = this.game.add.text(50 + this.cardsGroup.centerX, this.cardsGroup.bottom + 100, null , textStyle);
+        let betText = this.game.add.text(this.cardsGroup.centerX, this.cardsGroup.bottom + 100, null , textStyle);
         betText.anchor.set(0.5, 0);
 
-        this.stake.registerDrawer((model: Stake, changedProps) => {
+        this.slots.stake.registerDrawer((model: Stake, changedProps) => {
             changedProps.forEach(prop => {
                 switch (prop) {
                     case "bet":
                         betText.setText(`${this.game.myLocale.bet}: ${model.bet}`);
                         break;
-                    case "symbol":
-                        // 
+                    case "symbol": {
+                        let frame = config.GAME.CARDS_FRAMES_MAP[model.symbol];
+                        this.cardsGroup.children.forEach((card: Phaser.Button) => {
+                            if (card.frame === frame) {
+                                card.tint = 0x0000ff;
+                            } else {
+                                card.tint = 0xffffff;
+                            }
+                        });
+
                         break;
+                    }
                 }
             });
         });
-        this.stake.draw(["bet", "symbol"]);
 
-        this.createReel();
+        this.slots.registerDrawer((model: Slots, changedProps) => {
+            balanceText.setText(`${this.game.myLocale.balance}: ${model.balance}`);
+        });
+
+        this.slots.draw(["stake", "balance"]);
+
     }
 
     protected createCards() {
@@ -67,7 +71,6 @@ export default class Play extends Phaser.State {
             b.anchor.set(0, 0.5);
             b.x += (b.width + 50) * i;
             this.cardsGroup.add(b);
-            b.onInputUp.add((r) => console.log(r));
         }
         this.cardsGroup.onChildInputOver.add((b) => {
             b.tint = 0xff00ff;
@@ -78,7 +81,10 @@ export default class Play extends Phaser.State {
         this.cardsGroup.onChildInputDown.add((b) => {
             b.tint = 0x0000ff;
         });
-        this.cardsGroup.onChildInputUp.add(this.onCardClick, this);
+        this.cardsGroup.onChildInputUp.add((b) => {
+            b.tint = 0xffffff;
+            this.onCardClick(b);
+        });
     }
 
     protected createReel() {
@@ -94,8 +100,44 @@ export default class Play extends Phaser.State {
     }
 
     protected onCardClick(card) {
-        console.log(card.frame);
-        // this.cardsGroup.forEach(b => b.inputEnabled = false, this);
-        this.cardsGroup.alpha = 0.5;
+
+        try {
+            this.reel.start(1000 + Math.random() * 500, 0.5);
+        } catch (e) { ; }
+
+
+        this.slots.stake.symbol = this.getFrameSymbol(card.frame);
+        this.slots.spin().then((data) => {
+            console.log(data);
+            let frame = config.GAME.CARDS_FRAMES_MAP[data.spinResult[2]];
+
+            try {
+                this.reel.stop(frame).then(() => {
+                    this.toggleInput(true);
+                    this.slots.stake.symbol = null;
+                    this.slots.balance += data.totalWin;
+                });
+            } catch (e) { ; }
+
+        }).catch(() => {
+            console.log("error");
+        });
+        this.toggleInput(false);
+    }
+
+    protected getFrameSymbol(frameNumber: number) {
+        let map = config.GAME.CARDS_FRAMES_MAP;
+        let symbols = Object.keys(map);
+        for (let i = 0; i < symbols.length; i++) {
+            if (map[symbols[i]] === frameNumber) {
+                return symbols[i];
+            }
+        }
+        throw new Error("Unknown frame");
+    }
+
+    protected toggleInput(enabled: boolean) {
+        this.cardsGroup.forEach(b => b.inputEnabled = enabled, this);
+        this.cardsGroup.alpha = enabled ? 1 : 0.7;
     }
 }
