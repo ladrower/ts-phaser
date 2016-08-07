@@ -22,10 +22,10 @@ export default class Http implements IHTTP {
                         try {
                             resolve(JSON.parse(xmlhttp.responseText));
                         } catch (e) {
-                            reject();
+                            reject(e);
                         }
                     } else {
-                        reject();
+                        reject(xmlhttp);
                     }
                 }
             };

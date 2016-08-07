@@ -11,11 +11,14 @@ export default class Play extends Phaser.State {
     protected cardsGroup: Phaser.Group;
     protected decrementBtn: Phaser.Button;
     protected incrementBtn: Phaser.Button;
+    protected reelAudio: Phaser.Sound;
+    protected bigwinAudio: Phaser.Sound;
+    protected regwinAudio: Phaser.Sound;
 
     public game: Game;
 
     public init() {
-        this.reel = new ReelComponent(this.game, config.GAME.CARDS_SPRITE, config.GAME.CARDS_NUMBER, "MyBlurY");
+        this.reel = new ReelComponent(this.game, config.GAME.CARDS_SPRITE.key, config.GAME.CARDS_NUMBER, "MyBlurY");
         this.slots = new Slots(
             new Stake(null, 1)
         );
@@ -25,6 +28,7 @@ export default class Play extends Phaser.State {
         this.createCards();
         this.createReel();
         this.createBetButtons();
+        this.createAudio();
         this.toggleInput(true);
 
         let textStyle = {alight: "center", fill: "#fff", font: "80px Arial", stroke: "#000"};
@@ -51,7 +55,6 @@ export default class Play extends Phaser.State {
                                 card.tint = 0xffffff;
                             }
                         });
-
                         break;
                     }
                 }
@@ -63,7 +66,6 @@ export default class Play extends Phaser.State {
         });
 
         this.slots.draw(["stake", "balance"]);
-
     }
 
     public update() {
@@ -74,7 +76,7 @@ export default class Play extends Phaser.State {
         this.cardsGroup = this.add.group();
         this.cardsGroup.inputEnableChildren = true;
         for (let i = 0; i < config.GAME.CARDS_NUMBER; i++) {
-            let b = this.add.button(50 + 128, this.world.centerY, config.GAME.CARDS_SPRITE);
+            let b = this.add.button(50 + 128, this.world.centerY, config.GAME.CARDS_SPRITE.key);
             b.frame = i;
             b.anchor.set(0, 0.5);
             b.x += (b.width + 50) * i;
@@ -105,7 +107,8 @@ export default class Play extends Phaser.State {
     }
 
     protected createBetButtons() {
-        this.decrementBtn = this.add.button(this.cardsGroup.centerX - 200, this.cardsGroup.bottom + 80, config.GAME.ATLAS_SPRITE, () => {
+        this.decrementBtn = this.add.button(this.cardsGroup.centerX - 200, this.cardsGroup.bottom + 80, config.GAME.ATLAS_SPRITE.key,
+        () => {
             if (this.slots.stake.bet !== config.GAME.BET_RANGE[0]) {
                 this.slots.stake.bet--;
                 this.toggleBetInput(true);
@@ -114,7 +117,8 @@ export default class Play extends Phaser.State {
         this.decrementBtn.anchor.set(0.5, 0);
         this.decrementBtn.frameName = "minus-icon.png";
 
-        this.incrementBtn = this.add.button(this.cardsGroup.centerX + 200, this.cardsGroup.bottom + 80, config.GAME.ATLAS_SPRITE, () => {
+        this.incrementBtn = this.add.button(this.cardsGroup.centerX + 200, this.cardsGroup.bottom + 80, config.GAME.ATLAS_SPRITE.key,
+        () => {
             if (this.slots.stake.bet !== config.GAME.BET_RANGE[1]) {
                 this.slots.stake.bet++;
                 this.toggleBetInput(true);
@@ -124,9 +128,17 @@ export default class Play extends Phaser.State {
         this.incrementBtn.frameName = "plus-icon.png";
     }
 
+    protected createAudio() {
+        this.reelAudio = this.add.audio(config.GAME.AUDIO_KEY.REEL);
+        this.bigwinAudio = this.add.audio(config.GAME.AUDIO_KEY.BIG_WIN);
+        this.regwinAudio = this.add.audio(config.GAME.AUDIO_KEY.REG_WIN);
+    }
+
     protected onCardClick(card) {
         try {
             this.reel.start(1000 + Math.random() * 500, 0.5);
+            this.reelAudio.fadeIn(1000);
+            this.reelAudio.loopFull();
         } catch (e) { ; }
 
         this.slots.stake.symbol = this.getFrameSymbol(card.frame);
@@ -157,15 +169,20 @@ export default class Play extends Phaser.State {
                             });
                         if (data.winType === config.GAME.WIN_TYPE.BIG) {
                             this.animateBigWin(data.totalWin, 2000, 500);
+                        } else {
+                            this.animateRegWin(data.totalWin, 3000);
                         }
                     } else {
                         onComplete();
                     }
                 });
+                this.reelAudio.fadeOut(1000);
             } catch (e) { ; }
 
-        }).catch(() => {
-            console.log("error");
+        }).catch(error => {
+            this.reel.stop(-1).then(() => this.toggleInput(true));
+            this.reelAudio.stop();
+            alert("Server error occurred. Please try again.");
         });
         this.toggleInput(false);
     }
@@ -217,10 +234,20 @@ export default class Play extends Phaser.State {
             font: "200px Arial",
             stroke: "#000",
         });
+        duration = Math.max(500, duration);
         winText.anchor.set(0.5);
+        this.bigwinAudio.fadeIn(500);
         this.add.tween(winText.scale).to({x: 3, y: 3}, duration, Phaser.Easing.Quadratic.In, true, delay);
         this.add.tween(win).to({count: totalWin}, duration, Phaser.Easing.Quadratic.In, true, delay)
             .onUpdateCallback(() => winText.setText(win.count.toFixed(0)))
-            .onComplete.addOnce(() => this.time.events.add(500, () => winText.destroy()));
+            .onComplete.addOnce(() => {
+                this.time.events.add(500, () => winText.destroy());
+                this.bigwinAudio.fadeOut(500);
+            });
+    }
+
+    protected animateRegWin(totalWin: number, duration: number) {
+        this.regwinAudio.fadeIn(500);
+        this.time.events.add(Math.max(500, duration), () => this.regwinAudio.fadeOut(500));
     }
 }
