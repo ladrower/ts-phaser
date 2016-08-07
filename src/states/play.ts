@@ -29,11 +29,11 @@ export default class Play extends Phaser.State {
 
         let textStyle = {alight: "center", fill: "#fff", font: "80px Arial", stroke: "#000"};
 
-        let balanceText = this.game.add.text(this.cardsGroup.centerX, this.cardsGroup.top - 100, "Balance", textStyle);
+        let balanceText = this.add.text(this.cardsGroup.centerX, this.cardsGroup.top - 100, "Balance", textStyle);
         balanceText.anchor.set(0.5, 1);
 
 
-        let betText = this.game.add.text(this.cardsGroup.centerX, this.cardsGroup.bottom + 100, null , textStyle);
+        let betText = this.add.text(this.cardsGroup.centerX, this.cardsGroup.bottom + 100, null , textStyle);
         betText.anchor.set(0.5, 0);
 
         this.slots.stake.registerDrawer((model: Stake, changedProps) => {
@@ -147,7 +147,7 @@ export default class Play extends Phaser.State {
                         item.anchor.set(0.5);
                         item.x += item.width / 2;
                         item.y += item.height / 2;
-                        this.add.tween(item.scale).to({x: 2, y: 2}, 1000, Phaser.Easing.Exponential.InOut, true, 0, 1, true)
+                        this.add.tween(item.scale).to({x: 2, y: 2}, 750, Phaser.Easing.Cubic.InOut, true, 0, 1, true)
                             .onComplete.add(() => {
                                 onComplete();
                                 item.mask = mask;
@@ -155,6 +155,9 @@ export default class Play extends Phaser.State {
                                 item.x -= item.width / 2;
                                 item.y -= item.height / 2;
                             });
+                        if (data.winType === config.GAME.WIN_TYPE.BIG) {
+                            this.animateBigWin(data.totalWin, 2000, 500);
+                        }
                     } else {
                         onComplete();
                     }
@@ -204,5 +207,20 @@ export default class Play extends Phaser.State {
         if (incEnabled) {
             this.incrementBtn.input.useHandCursor = true;
         }
+    }
+
+    protected animateBigWin(totalWin: number, duration: number, delay: number) {
+        let win = {count: 1};
+        let winText = this.add.text(this.world.centerX, this.world.centerY, win.count.toString(), {
+            alight: "center",
+            fill: "#fff",
+            font: "200px Arial",
+            stroke: "#000",
+        });
+        winText.anchor.set(0.5);
+        this.add.tween(winText.scale).to({x: 3, y: 3}, duration, Phaser.Easing.Quadratic.In, true, delay);
+        this.add.tween(win).to({count: totalWin}, duration, Phaser.Easing.Quadratic.In, true, delay)
+            .onUpdateCallback(() => winText.setText(win.count.toFixed(0)))
+            .onComplete.addOnce(() => this.time.events.add(500, () => winText.destroy()));
     }
 }
