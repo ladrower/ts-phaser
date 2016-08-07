@@ -9,6 +9,8 @@ export default class Play extends Phaser.State {
     protected slots: Slots;
     protected reel: ReelComponent;
     protected cardsGroup: Phaser.Group;
+    protected decrementBtn: Phaser.Button;
+    protected incrementBtn: Phaser.Button;
 
     public game: Game;
 
@@ -22,6 +24,8 @@ export default class Play extends Phaser.State {
     public create() {
         this.createCards();
         this.createReel();
+        this.createBetButtons();
+        this.toggleInput(true);
 
         let textStyle = {alight: "center", fill: "#fff", font: "80px Arial", stroke: "#000"};
 
@@ -62,11 +66,15 @@ export default class Play extends Phaser.State {
 
     }
 
+    public update() {
+        this.reel.onUpdate();
+    }
+
     protected createCards() {
         this.cardsGroup = this.add.group();
         this.cardsGroup.inputEnableChildren = true;
         for (let i = 0; i < config.GAME.CARDS_NUMBER; i++) {
-            let b = this.add.button(50, this.world.centerY, config.GAME.CARDS_SPRITE);
+            let b = this.add.button(50 + 128, this.world.centerY, config.GAME.CARDS_SPRITE);
             b.frame = i;
             b.anchor.set(0, 0.5);
             b.x += (b.width + 50) * i;
@@ -88,34 +96,68 @@ export default class Play extends Phaser.State {
     }
 
     protected createReel() {
-        let reelWindow = this.add.graphics(this.world.width - 300, this.world.height / 2 - 128);
+        let reelWindow = this.add.graphics(this.world.width - 384 - 50, this.world.height / 2 - 128);
         reelWindow.beginFill(0xffffff);
         reelWindow.drawRect(0, 0, 256, 256);
+        reelWindow.alpha = 0;
 
-        this.reel.create(this.world.width - 300, this.world.height / 2 - 128, reelWindow, 300);
+        this.reel.create(this.world.width - 384 - 50, this.world.height / 2 - 128, reelWindow, 300);
     }
 
-    public update() {
-        this.reel.onUpdate();
+    protected createBetButtons() {
+        this.decrementBtn = this.add.button(this.cardsGroup.centerX - 200, this.cardsGroup.bottom + 80, config.GAME.ATLAS_SPRITE, () => {
+            if (this.slots.stake.bet !== config.GAME.BET_RANGE[0]) {
+                this.slots.stake.bet--;
+                this.toggleBetInput(true);
+            }
+        });
+        this.decrementBtn.anchor.set(0.5, 0);
+        this.decrementBtn.frameName = "minus-icon.png";
+
+        this.incrementBtn = this.add.button(this.cardsGroup.centerX + 200, this.cardsGroup.bottom + 80, config.GAME.ATLAS_SPRITE, () => {
+            if (this.slots.stake.bet !== config.GAME.BET_RANGE[1]) {
+                this.slots.stake.bet++;
+                this.toggleBetInput(true);
+            }
+        });
+        this.incrementBtn.anchor.set(0.5, 0);
+        this.incrementBtn.frameName = "plus-icon.png";
     }
 
     protected onCardClick(card) {
-
         try {
             this.reel.start(1000 + Math.random() * 500, 0.5);
         } catch (e) { ; }
 
-
         this.slots.stake.symbol = this.getFrameSymbol(card.frame);
-        this.slots.spin().then((data) => {
-            console.log(data);
+        this.slots.spin().then(data => {
             let frame = config.GAME.CARDS_FRAMES_MAP[data.spinResult[2]];
-
             try {
                 this.reel.stop(frame).then(() => {
-                    this.toggleInput(true);
-                    this.slots.stake.symbol = null;
-                    this.slots.balance += data.totalWin;
+                    let onComplete = () => {
+                        this.toggleInput(true);
+                        this.slots.stake.symbol = null;
+                        this.slots.balance += data.totalWin;
+                    };
+
+                    if (data.winType !== config.GAME.WIN_TYPE.NONE) {
+                        let item = this.reel.getTopVisibleItem();
+                        let mask = item.mask;
+                        item.mask = null;
+                        item.anchor.set(0.5);
+                        item.x += item.width / 2;
+                        item.y += item.height / 2;
+                        this.add.tween(item.scale).to({x: 2, y: 2}, 1000, Phaser.Easing.Exponential.InOut, true, 0, 1, true)
+                            .onComplete.add(() => {
+                                onComplete();
+                                item.mask = mask;
+                                item.anchor.set(0);
+                                item.x -= item.width / 2;
+                                item.y -= item.height / 2;
+                            });
+                    } else {
+                        onComplete();
+                    }
                 });
             } catch (e) { ; }
 
@@ -137,7 +179,30 @@ export default class Play extends Phaser.State {
     }
 
     protected toggleInput(enabled: boolean) {
-        this.cardsGroup.forEach(b => b.inputEnabled = enabled, this);
-        this.cardsGroup.alpha = enabled ? 1 : 0.7;
+        this.cardsGroup.forEach(b => {
+            b.inputEnabled = enabled;
+            if (enabled) {
+                b.input.useHandCursor = true;
+            }
+        }, this);
+        this.cardsGroup.alpha = enabled ? 1 : .5;
+        this.toggleBetInput(enabled);
+    }
+
+    protected toggleBetInput(enabled: boolean) {
+        let decEnabled = this.slots.stake.bet === config.GAME.BET_RANGE[0] ? false : enabled;
+        let incEnabled = this.slots.stake.bet === config.GAME.BET_RANGE[1] ? false : enabled;
+
+        this.decrementBtn.inputEnabled = decEnabled;
+        this.decrementBtn.alpha = decEnabled ? 1 : .5;
+        if (decEnabled) {
+            this.decrementBtn.input.useHandCursor = true;
+        }
+
+        this.incrementBtn.inputEnabled = incEnabled;
+        this.incrementBtn.alpha = incEnabled ? 1 : .5;
+        if (incEnabled) {
+            this.incrementBtn.input.useHandCursor = true;
+        }
     }
 }

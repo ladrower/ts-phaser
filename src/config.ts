@@ -19,6 +19,11 @@ let basic = {
         CARDS_NUMBER: 4,
         CARDS_SPRITE: "letters",
         INITIAL_BALANCE: 1000,
+        WIN_TYPE: {
+            BIG: "bigWin",
+            NONE: "none",
+            REGULAR: "regular",
+        },
     },
     STAGE: {
         COLOR: 0x182d3b,

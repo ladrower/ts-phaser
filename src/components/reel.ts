@@ -41,7 +41,7 @@ export default class Reel {
         protected maxBlurValue = 15
     ) {}
 
-    public create(baseX: number, baseY: number, window: Phaser.Graphics, offset: number, stopYOffset = 0, itemsNumber = 3) {
+    public create(baseX: number, baseY: number, window: Phaser.Graphics, offset: number, stopYOffset = 0, itemsNumber = 3): Reel {
         this.baseX = baseX;
         this.baseY = baseY;
         this.stopYOffset = stopYOffset;
@@ -62,9 +62,10 @@ export default class Reel {
             this.game.add.existing(item);
             this.items.push(item);
         }
+        return this;
     }
 
-    public start(pixelsPerSecond = 1000, accelerationSeconds = 1, accelarationPower = 4) {
+    public start(pixelsPerSecond = 1000, accelerationSeconds = 1, accelarationPower = 4): Promise<any> {
         if (!this.isRunning) {
             let Easing = (p => {
                 switch (p) {
@@ -112,7 +113,7 @@ export default class Reel {
         throw new ReelException.AlreadyStarted("Start method was already called");
     }
 
-    public stop(finalFrameNumber: number) {
+    public stop(finalFrameNumber: number): Promise<any> {
         if (this.isStarted && !this.isStopping) {
             this.isStopping = true;
             this.isStarted = false;
@@ -165,6 +166,13 @@ export default class Reel {
             this.lastUpdateTime = this.game.time.now;
             this.update(void(0), true);
         }
+    }
+
+    public getTopVisibleItem(): Phaser.Sprite {
+        let visibleItems = this.items
+            .filter(item => item.y >= this.baseY + this.stopYOffset)
+            .sort((a, b) => a.y - b.y);
+        return visibleItems.length ? visibleItems[0] : null;
     }
 
     protected update(blur?: number, reset = false) {

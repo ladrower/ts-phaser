@@ -6,7 +6,7 @@ import IHTTP from "../interfaces/iHttp";
 import Http from "../services/http";
 
 interface SpinResponse {
-    winType: "none" | 'regular' | "bigWin";
+    winType: string;
     totalWin: number;
     spinResult: Array<string>;
 }
