@@ -132,13 +132,15 @@ export default class Play extends Phaser.State {
         this.reelAudio = this.add.audio(config.GAME.AUDIO_KEY.REEL);
         this.bigwinAudio = this.add.audio(config.GAME.AUDIO_KEY.BIG_WIN);
         this.regwinAudio = this.add.audio(config.GAME.AUDIO_KEY.REG_WIN);
+        this.reelAudio.onFadeComplete.add((a: Phaser.Sound, v: number) => v || a.stop());
+        this.bigwinAudio.onFadeComplete.add((a: Phaser.Sound, v: number) => v || a.stop());
+        this.regwinAudio.onFadeComplete.add((a: Phaser.Sound, v: number) => v || a.stop());
     }
 
     protected onCardClick(card) {
         try {
             this.reel.start(1000 + Math.random() * 500, 0.5);
-            this.reelAudio.fadeIn(1000);
-            this.reelAudio.loopFull();
+            this.reelAudio.loopFull(1);
         } catch (e) { ; }
 
         this.slots.stake.symbol = this.getFrameSymbol(card.frame);
