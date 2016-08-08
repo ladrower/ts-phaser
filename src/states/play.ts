@@ -8,6 +8,7 @@ import ReelComponent from "../components/reel";
 export default class Play extends Phaser.State {
     protected slots: Slots;
     protected reel: ReelComponent;
+    protected reelFrame: Phaser.Graphics;
     protected cardsGroup: Phaser.Group;
     protected decrementBtn: Phaser.Button;
     protected incrementBtn: Phaser.Button;
@@ -29,7 +30,9 @@ export default class Play extends Phaser.State {
         this.createReel();
         this.createBetButtons();
         this.createAudio();
-        this.toggleInput(true);
+        this.toggleInput(false);
+        this.reel.start(1500, 0.1, 2);
+        this.reel.stop(0).then(() => this.toggleInput(true));
 
         let textStyle = {alight: "center", fill: "#fff", font: "80px Arial", stroke: "#000"};
 
@@ -98,12 +101,27 @@ export default class Play extends Phaser.State {
     }
 
     protected createReel() {
-        let reelWindow = this.add.graphics(this.world.width - 384 - 50, this.world.height / 2 - 128);
+        let cardW = 256, cardH = 256, offset = 300, shown = 5, framePadding = 10;
+        let reelWindow = this.add.graphics(
+            this.world.width - cardW * 1.5 - 50,
+            this.world.height / 2 - cardH / 2 - cardH * 2 - (offset - cardH) * 2
+        );
         reelWindow.beginFill(0xffffff);
-        reelWindow.drawRect(0, 0, 256, 256);
+        reelWindow.drawRect(0, 0, cardW, cardH * shown + (offset - cardH) * (shown - 1));
         reelWindow.alpha = 0;
 
-        this.reel.create(this.world.width - 384 - 50, this.world.height / 2 - 128, reelWindow, 300);
+        this.reel.create(
+            this.world.width - cardW * 1.5 - 50,
+            this.world.height / 2 - cardH / 2 - cardH * 2 - (offset - cardH) * 2,
+            reelWindow,
+            offset,
+            cardH * 2 + (offset - cardH) * 2,
+            shown + 1
+        );
+
+        this.reelFrame = this.add.graphics(this.world.width - cardW * 1.5 - 50, this.world.height / 2 - cardH / 2);
+        this.reelFrame.lineStyle(10, 0xFFFF00, 1);
+        this.reelFrame.drawRect(-framePadding, -framePadding, cardW + framePadding * 2, cardH + framePadding * 2);
     }
 
     protected createBetButtons() {
@@ -161,6 +179,7 @@ export default class Play extends Phaser.State {
                         item.anchor.set(0.5);
                         item.x += item.width / 2;
                         item.y += item.height / 2;
+                        this.world.bringToTop(item);
                         this.add.tween(item.scale).to({x: 2, y: 2}, 750, Phaser.Easing.Cubic.InOut, true, 0, 1, true)
                             .onComplete.add(() => {
                                 onComplete();
@@ -168,6 +187,7 @@ export default class Play extends Phaser.State {
                                 item.anchor.set(0);
                                 item.x -= item.width / 2;
                                 item.y -= item.height / 2;
+                                this.world.bringToTop(this.reelFrame);
                             });
                         if (data.winType === config.GAME.WIN_TYPE.BIG) {
                             this.animateBigWin(data.totalWin, 2000, 500);
