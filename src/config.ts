@@ -10,7 +10,7 @@ let AUDIO_KEY = {
 };
 
 let basic = {
-    API_BASE: "http://artemplatonov.com/phasering/",
+    API_BASE: "http://www.artemplatonov.com/phasering/",
     BOOTSTRAP_STATE: "Boot",
     CONFIG_PATH: "config.json",
     GAME: {

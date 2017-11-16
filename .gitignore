@@ -1,3 +1,5 @@
 /node_modules
+.idea/
+.settings/
 /src/**/*.js
 debug.log

@@ -4,4 +4,6 @@
         "**/.git": true,
         "src/**/*.js": true
     }
+,
+"typescript.check.workspaceVersion": false
 }
