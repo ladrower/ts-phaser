@@ -29,7 +29,7 @@ export default class Load extends Phaser.State {
             this.load.audio(audio.key, audio.urls, true);
         });
         // Just to try some cool webgl filters
-        this.load.script("filter", "https://cdn.rawgit.com/photonstorm/phaser/master/v2/filters/CheckerWave.js");
+        this.load.script("filter", "https://cdn.rawgit.com/photonstorm/phaser/v2.6.2/filters/CheckerWave.js");
     }
 
     public create() {
